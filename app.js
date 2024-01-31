@@ -1,5 +1,5 @@
 const express = require('express')
-const {loadContacts, findContacts, addContact, cekDuplikat,} = require('./utils/contacts')
+const {loadContacts, findContacts, addContact, cekDuplikat, deleteContact, updateContact, } = require('./utils/contacts')
 const { body, validationResult, check } = require('express-validator');
 const session = require('express-session')
 const cookieParser = require('cookie-parser')
@@ -74,6 +74,60 @@ app.post(
             addContact(req.body)
             //kirim flash massage AAAAAAAAAAAAAAAAAAAAA
             req.flash('msg', 'data kontak berhasil ditambahkan')
+            res.redirect('/contact')
+        }
+})
+
+//proses hapus data
+app.get('/contact/delete/:nama', (req, res) => {
+    const contact = findContacts(req.params.nama)
+
+    if(!contact) {
+        res.status(404)
+        res.send('<h1>404</h1>')
+    }else {
+        deleteContact(req.params.nama)
+        req.flash('msg', 'data kontak berhasil diihapus')
+        res.redirect('/contact')
+    }
+})
+
+//halaman ubah
+app.get('/contact/edit/:nama', (req, res) => {
+    const contact = findContacts(req.params.nama)
+    res.render('edit-contact', {
+        title: 'form ubah kontak',
+        contact,
+    })
+})
+
+//proses ubah data
+app.post(
+    '/contact/update', 
+    [
+    body('nama').custom((value, {req}) => {
+        const duplikat = cekDuplikat(value)
+        if (value !== req.body.oldName && duplikat) {
+            throw new Error('nama kontak sudah ada')
+        }
+        return true
+    }),
+        check('email', 'email tidak valid').isEmail(),
+        check('nohp', 'nohp tidak valid').isMobilePhone('id-ID')
+    ],
+    (req, res) => {
+        const errors = validationResult(req)
+        if (!errors.isEmpty()) {
+            // return res.status(400).json({errors: errors.array()})
+            res.render('edit-contact', {
+                title: 'form ubah kontak',
+                errors: errors.array(),
+                contact: req.body
+            })
+        }else {
+            updateContact(req.body)
+            //kirim flash massage AAAAAAAAAAAAAAAAAAAAA
+            req.flash('msg', 'data kontak berhasil diubah')
             res.redirect('/contact')
         }
 })
